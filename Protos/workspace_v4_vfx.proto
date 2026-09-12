@@ -1,0 +1,40 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Version 4 Workspace Video Effect definitions.
+syntax = "proto3";
+
+package ldtx.workspace.v4;
+
+// Wraps one concrete Video Effect definition.
+message VideoEffectWrapper {
+  oneof definition {
+    // The custom Video Effect definition. Mutually exclusive with the other
+    // fields.
+    CustomVideoEffect custom = 1;
+    // The background-removal VFX effect definition. Mutually exclusive with
+    // the other fields.
+    BackgroundRemovalVfxEffect background_removal = 2;
+  }
+}
+
+// A customization point for a Video Effect.
+message CustomVideoEffect {
+  // The JSON representation of this custom Video Effect. Its format is
+  // unspecified.
+  string json = 1;
+}
+
+// A Video Effect that removes the background from input video.
+message BackgroundRemovalVfxEffect {
+  enum Model {
+    // No background-removal model is specified.
+    UNSPECIFIED = 0;
+    // The MediaPipe landscape model.
+    MEDIAPIPE_LANDSCAPE = 1;
+  }
+
+  // The background-removal model to use.
+  Model model = 1;
+}

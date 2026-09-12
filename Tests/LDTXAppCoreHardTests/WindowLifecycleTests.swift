@@ -10,7 +10,7 @@ import Testing
 @MainActor
 struct WindowLifecycleIntegrationTestSuite {
   @Test func testCloseModeSkipsPromptAndSaveButStillStopsOnce() {
-    let gate = WorkspaceWindowCloseCoordinator(discardsUnsavedChangesOnClose: true)
+    let gate = WorkspaceV4WindowCloseCoordinator(discardsUnsavedChangesOnClose: true)
     _ = NSApplication.shared
     let window = NSWindow()
     var confirmations = 0
@@ -75,7 +75,7 @@ struct WindowLifecycleIntegrationTestSuite {
   }
 
   @Test func failedSavePreventsCloseAndShutdown() {
-    let gate = WorkspaceWindowCloseCoordinator()
+    let gate = WorkspaceV4WindowCloseCoordinator()
     _ = NSApplication.shared
     let window = NSWindow()
     var stops = 0
@@ -88,7 +88,7 @@ struct WindowLifecycleIntegrationTestSuite {
   }
 
   @Test func discardConfirmationDoesNotEraseDirtyStateBeforeQuitCommits() {
-    let gate = WorkspaceWindowCloseCoordinator()
+    let gate = WorkspaceV4WindowCloseCoordinator()
     _ = NSApplication.shared
     let window = NSWindow()
     var confirmations = 0
@@ -105,7 +105,7 @@ struct WindowLifecycleIntegrationTestSuite {
   }
 
   @Test func repeatedCloseRequestsStartShutdownOnlyOnce() {
-    let gate = WorkspaceWindowCloseCoordinator()
+    let gate = WorkspaceV4WindowCloseCoordinator()
     _ = NSApplication.shared
     let window = NSWindow()
     var stops = 0

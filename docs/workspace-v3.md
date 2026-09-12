@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Workspace v3
 
-Workspace v3 is the only Workspace format read and written by LDTX. A Workspace
+Workspace v3 is a historical format being replaced by Workspace v4; a Workspace
 package has two canonical protobuf files:
 
 - `workspace.pb` contains shared resources and Programs.

@@ -271,6 +271,14 @@ public final class ProgramRuntimeState: @unchecked Sendable {
     }
   }
 
+  public func clear() {
+    storage.withLock {
+      guard $0.program != nil else { return }
+      $0.program = nil
+      $0.advanceRevision()
+    }
+  }
+
   public func read<T: Sendable>(
     _ body: @Sendable (ProgramRuntimeConfiguration?) throws -> T
   ) rethrows -> T {

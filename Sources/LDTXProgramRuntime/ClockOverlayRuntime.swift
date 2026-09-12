@@ -39,8 +39,9 @@ struct ClockTextFormatter: Sendable {
     formatter.timeZone =
       component.usesSystemTimeZone
       ? timeZoneProvider()
-      : TimeZone(secondsFromGMT: Int(component.utcOffsetMinutes) * 60) ?? TimeZone(
-        secondsFromGMT: 0)!
+      : TimeZone(secondsFromGMT: Int(min(max(component.utcOffsetMinutes, -840), 840)) * 60)
+        ?? TimeZone(
+          secondsFromGMT: 0)!
     switch (component.uses24HourTime, component.showsSeconds) {
     case (true, true):
       formatter.dateFormat = "HH:mm:ss"

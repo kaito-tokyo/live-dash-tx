@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LDTX Workspace Protobuf Reference</title>
+    <style>
+      table { border-collapse: collapse; }
+      table, th, td { border: 1px solid; }
+    </style>
+  </head>
+  <body>
+    <h1>LDTX Workspace Protobuf Reference</h1>
+    <p>Schema reference for the persisted Workspace format.</p>
+
+    {{range $file := .Files}}
+    <section>
+      <h2><code>{{$file.Name}}</code></h2>
+      <p>Package <code>{{$file.Package}}</code></p>
+
+      {{range $message := $file.Messages}}
+      {{if not (hasSuffix "Entry" $message.Name)}}
+      <article>
+        <h3 id="{{$message.FullName}}"><code>{{$message.LongName}}</code></h3>
+        {{if $message.Description}}<p>{{$message.Description}}</p>{{end}}
+        {{if $message.HasFields}}
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Type</th><th>Label</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {{range $field := $message.Fields}}
+            <tr>
+              <td><code>{{$field.Name}}</code></td>
+              <td>
+                {{if $field.IsMap}}
+                  {{range $entry := $file.Messages}}{{if eq $entry.FullName $field.FullType}}{{$key := index $entry.Fields 0}}{{$value := index $entry.Fields 1}}<code>map&lt;</code>{{if contains "." $key.FullType}}<a href="#{{$key.FullType}}"><code>{{$key.Type}}</code></a>{{else}}<code>{{$key.Type}}</code>{{end}}<code>, </code>{{if contains "." $value.FullType}}<a href="#{{$value.FullType}}"><code>{{$value.Type}}</code></a>{{else}}<code>{{$value.Type}}</code>{{end}}<code>&gt;</code>{{end}}{{end}}
+                {{else if contains "." $field.FullType}}
+                  <a href="#{{$field.FullType}}"><code>{{$field.Type}}</code></a>
+                {{else}}
+                  <code>{{$field.Type}}</code>
+                {{end}}
+              </td>
+              <td>{{if $field.IsMap}}map{{else if $field.Label}}{{$field.Label}}{{else if $field.IsOneof}}oneof <code>{{$field.OneofDecl}}</code>{{end}}</td>
+              <td>{{if $field.Description}}{{$field.Description}}{{else}}—{{end}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+      </article>
+      {{end}}
+      {{end}}
+
+      {{range $enum := $file.Enums}}
+      <article>
+        <h3 id="{{$enum.FullName}}"><code>{{$enum.LongName}}</code></h3>
+        {{if $enum.Description}}<p>{{$enum.Description}}</p>{{end}}
+        <table>
+          <thead>
+            <tr><th>Value</th><th>Number</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {{range $value := $enum.Values}}
+            <tr>
+              <td><code>{{$value.Name}}</code></td>
+              <td>{{$value.Number}}</td>
+              <td>{{if $value.Description}}{{$value.Description}}{{else}}—{{end}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </article>
+      {{end}}
+    </section>
+    {{end}}
+  </body>
+</html>

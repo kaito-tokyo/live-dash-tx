@@ -20,50 +20,64 @@ the commands below.
 | Generated output                                      | Source of truth                                  |
 | ----------------------------------------------------- | ------------------------------------------------ |
 | `LDTX.xcodeproj`                                      | `project.yml`                                    |
-| `Sources/LDTXProgram/persistence.pb.swift`            | `Sources/LDTXProgram/Protos/persistence.proto`   |
-| `Sources/LDTXProgram/program.pb.swift`                | `Sources/LDTXProgram/Protos/program.proto`       |
-| `Sources/LDTXWorkspace/app_settings.pb.swift`         | `Sources/LDTXWorkspace/Protos/app_settings.proto` |
-| `Sources/LDTXWorkspace/workspace.pb.swift`            | `Sources/LDTXWorkspace/Protos/workspace.proto`   |
+| `Sources/LDTXProgram/persistence.pb.swift`            | `Protos/persistence.proto`                        |
+| `Sources/LDTXProgram/program.pb.swift`                | `Protos/program.proto`                            |
+| `Sources/LDTXWorkspace/app_settings.pb.swift`         | `Protos/app_settings.proto`                       |
+| `Sources/LDTXWorkspace/envelope.pb.swift`             | `Protos/envelope.proto`                            |
+| `Sources/LDTXWorkspace/workspace_v4_*.pb.swift`       | `Protos/workspace_v4_*.proto`                      |
 | `Sources/LDTXFullAppFeatures/MediaPipeSelfieSegmenter.mlpackage` | `Tools/MediaPipeSelfieSegmenter.py`              |
 
-**If a file under `Sources/LDTXProgram/Protos` changes:**
+**If a Program schema under `Protos/` changes:**
 
 ```sh
 protoc \
-  --proto_path=Sources/LDTXProgram/Protos \
+  --proto_path=Protos \
   --plugin=protoc-gen-swift="$(brew --prefix swift-protobuf)/bin/protoc-gen-swift" \
   --swift_opt=Visibility=Public \
   --swift_opt=FileNaming=DropPath \
   --swift_out=Sources/LDTXProgram \
-  Sources/LDTXProgram/Protos/program.proto \
-  Sources/LDTXProgram/Protos/persistence.proto
+  Protos/program.proto \
+  Protos/persistence.proto
 ```
 
-**If a file under `Sources/LDTXWorkspace/Protos` changes:**
+The Workspace v4 schema is split across `Protos/workspace_v4_*.proto`.
+`Protos/envelope.proto` defines the separate persistence envelopes. They are
+documented at `docs/protos/workspace.html`.
 
 ```sh
 protoc \
-  --proto_path=Sources/LDTXWorkspace/Protos \
-  --proto_path=Sources/LDTXProgram/Protos \
+  --proto_path=Protos \
   --plugin=protoc-gen-swift="$(brew --prefix swift-protobuf)/bin/protoc-gen-swift" \
-  --swift_opt=ProtoPathModuleMappings=Sources/LDTXWorkspace/Protos/module_mappings.asciipb \
+  --swift_opt=ProtoPathModuleMappings=Protos/module_mappings.asciipb \
   --swift_opt=Visibility=Public \
   --swift_opt=FileNaming=DropPath \
   --swift_out=Sources/LDTXWorkspace \
-  Sources/LDTXWorkspace/Protos/workspace.proto \
-  Sources/LDTXWorkspace/Protos/app_settings.proto
+  Protos/app_settings.proto \
+  Protos/envelope.proto \
+  Protos/workspace_v4_definition.proto \
+  Protos/workspace_v4_input_device.proto \
+  Protos/workspace_v4_preferences.proto \
+  Protos/workspace_v4_vfx.proto \
+  Protos/workspace_v4_video_component.proto \
+  Protos/workspace_v4_vision.proto
 ```
 
-**If `Sources/LDTXYouTubeOutputProtocol/Protos/youtube_output.proto` changes:**
+**Regenerate the Workspace v4 reference:**
+
+```sh
+node docs/_BUILD.mjs protos
+```
+
+**If `Protos/youtube_output.proto` changes:**
 
 ```sh
 protoc \
-  --proto_path=Sources/LDTXYouTubeOutputProtocol/Protos \
+  --proto_path=Protos \
   --plugin=protoc-gen-swift="$(brew --prefix swift-protobuf)/bin/protoc-gen-swift" \
   --swift_opt=Visibility=Public \
   --swift_opt=FileNaming=DropPath \
   --swift_out=Sources/LDTXYouTubeOutputProtocol \
-  Sources/LDTXYouTubeOutputProtocol/Protos/youtube_output.proto
+  Protos/youtube_output.proto
 ```
 
 **If the MediaPipe Selfie Segmenter model must be updated:**

@@ -117,35 +117,6 @@ public enum ApplicationOutputPreferencesPersistenceCodec {
   }
 }
 
-extension OutputDestination {
-  var protoMessage: Ldtx_Workspace_V3_OutputDestination {
-    var proto = Ldtx_Workspace_V3_OutputDestination()
-    proto.recordsLandscape = recordsLandscape
-    proto.recordsPortrait = recordsPortrait
-    proto.streamsToYoutube = streamsToYouTube
-    proto.youtubeIngestMode = youtubeIngestMode.rawValue
-    proto.overridesOutputFolder = overridesOutputFolder
-    if let outputFolderPath { proto.outputFolderPath = outputFolderPath }
-    proto.recordingCustomFields = recordingCustomFields
-    return proto
-  }
-}
-
-extension Ldtx_Workspace_V3_OutputDestination {
-  var domainModel: OutputDestination {
-    OutputDestination(
-      recordsLocally: recordsLandscape || recordsPortrait,
-      recordsLandscape: recordsLandscape,
-      recordsPortrait: recordsPortrait,
-      streamsToYouTube: streamsToYoutube,
-      youtubeIngestMode: YouTubeIngestMode(rawValue: youtubeIngestMode) ?? .dash,
-      overridesOutputFolder: overridesOutputFolder,
-      outputFolderPath: hasOutputFolderPath ? outputFolderPath : nil,
-      recordingCustomFields: recordingCustomFields
-    )
-  }
-}
-
 extension ApplicationOutputPreferences {
   fileprivate var protoMessage: Ldtx_App_V1_ApplicationOutputPreferences {
     var proto = Ldtx_App_V1_ApplicationOutputPreferences()

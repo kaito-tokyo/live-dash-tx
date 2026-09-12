@@ -19,6 +19,8 @@ public final class ActiveDualProgramOutputSession {
 
   private var portraitPreferences: ProgramPreferences
   private var portraitAudioDeviceIDsByInputKey: [String: String]
+  private let runsLandscape: Bool
+  private let runsPortrait: Bool
 
   public init(
     landscapeRuntime: ProgramRuntime,
@@ -28,12 +30,16 @@ public final class ActiveDualProgramOutputSession {
     portraitMediaHub: ProgramOutputMediaHub = ProgramOutputMediaHub(),
     portraitPreferences: ProgramPreferences = ProgramPreferences(),
     portraitAudioDeviceIDsByInputKey: [String: String] = [:],
+    runsLandscape: Bool = true,
+    runsPortrait: Bool = true,
     programRuntimeTransitionStateHandler: @escaping @MainActor @Sendable (Bool) -> Void = { _ in }
   ) {
     self.landscapeMediaHub = landscapeMediaHub
     self.portraitMediaHub = portraitMediaHub
     self.portraitPreferences = portraitPreferences
     self.portraitAudioDeviceIDsByInputKey = portraitAudioDeviceIDsByInputKey
+    self.runsLandscape = runsLandscape
+    self.runsPortrait = runsPortrait
     let transition = DualTransitionState(handler: programRuntimeTransitionStateHandler)
     landscape = ActiveProgramOutputSession(
       currentProgramRuntime: landscapeRuntime,
@@ -49,7 +55,9 @@ public final class ActiveDualProgramOutputSession {
     )
   }
 
-  public var isRunning: Bool { landscape.isRunning && portrait.isRunning }
+  public var isRunning: Bool {
+    (!runsLandscape || landscape.isRunning) && (!runsPortrait || portrait.isRunning)
+  }
 
   public func configurePortrait(
     preferences: ProgramPreferences,
@@ -71,7 +79,9 @@ public final class ActiveDualProgramOutputSession {
     failureHandler: @escaping @MainActor (Error) -> Void,
     completionHandler: @escaping @MainActor @Sendable (Result<Void, any Error>) -> Void
   ) {
-    guard landscape.hasConfiguredAudioMix, portrait.hasConfiguredAudioMix else {
+    guard !runsLandscape || landscape.hasConfiguredAudioMix,
+      !runsPortrait || portrait.hasConfiguredAudioMix
+    else {
       completionHandler(.failure(ActiveProgramOutputSessionError.emptyAudioMix))
       return
     }
@@ -85,34 +95,47 @@ public final class ActiveDualProgramOutputSession {
         completionHandler(.failure(error))
       }
     }
-    landscape.start(
-      programPreferences: programPreferences,
-      audioDeviceIDsByInputKey: audioDeviceIDsByInputKey,
-      eventHandler: eventHandler,
-      failureHandler: failureHandler,
-      completionHandler: { result in
-        landscapeResult = result
-        completeIfReady()
-      })
-    portrait.start(
-      programPreferences: portraitPreferences,
-      audioDeviceIDsByInputKey: portraitAudioDeviceIDsByInputKey,
-      eventHandler: { _ in },
-      failureHandler: failureHandler,
-      completionHandler: { result in
-        portraitResult = result
-        completeIfReady()
-      })
+    if runsLandscape {
+      landscape.start(
+        programPreferences: programPreferences,
+        audioDeviceIDsByInputKey: audioDeviceIDsByInputKey,
+        eventHandler: eventHandler,
+        failureHandler: failureHandler,
+        completionHandler: { result in
+          landscapeResult = result
+          completeIfReady()
+        })
+    } else {
+      landscapeResult = .success(())
+    }
+    if runsPortrait {
+      portrait.start(
+        programPreferences: portraitPreferences,
+        audioDeviceIDsByInputKey: portraitAudioDeviceIDsByInputKey,
+        eventHandler: { _ in },
+        failureHandler: failureHandler,
+        completionHandler: { result in
+          portraitResult = result
+          completeIfReady()
+        })
+    } else {
+      portraitResult = .success(())
+    }
+    completeIfReady()
   }
 
   public func stop(completionHandler: @escaping @MainActor @Sendable () -> Void = {}) {
-    var remaining = 2
+    var remaining = (runsLandscape ? 1 : 0) + (runsPortrait ? 1 : 0)
+    guard remaining > 0 else {
+      completionHandler()
+      return
+    }
     func childStopped() {
       remaining -= 1
       if remaining == 0 { completionHandler() }
     }
-    landscape.stop(completionHandler: childStopped)
-    portrait.stop(completionHandler: childStopped)
+    if runsLandscape { landscape.stop(completionHandler: childStopped) }
+    if runsPortrait { portrait.stop(completionHandler: childStopped) }
   }
 
   public func requestVideoKeyFrame() {

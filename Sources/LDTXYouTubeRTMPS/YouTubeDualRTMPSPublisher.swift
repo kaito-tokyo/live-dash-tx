@@ -4,9 +4,51 @@
 
 import Foundation
 
-public enum YouTubeRTMPSCanvas: String, Sendable, Equatable {
+public enum YouTubeRTMPSCanvas: String, Sendable, Equatable, Hashable {
   case landscape
   case portrait
+}
+
+/// One or two Canvas destinations used by an RTMPS publishing session.
+public struct YouTubeRTMPSDestinations: Sendable, Equatable, CustomStringConvertible,
+  CustomDebugStringConvertible
+{
+  public let landscape: YouTubeRTMPSDestination?
+  public let portrait: YouTubeRTMPSDestination?
+
+  public init(
+    landscape: YouTubeRTMPSDestination? = nil,
+    portrait: YouTubeRTMPSDestination? = nil
+  ) throws {
+    guard landscape != nil || portrait != nil,
+      landscape != portrait,
+      landscape?.streamName != portrait?.streamName
+    else { throw YouTubeRTMPSError.invalidDestination }
+    self.landscape = landscape
+    self.portrait = portrait
+  }
+
+  public init(_ dual: YouTubeDualRTMPSDestinations) {
+    landscape = dual.landscape
+    portrait = dual.portrait
+  }
+
+  public var canvases: Set<YouTubeRTMPSCanvas> {
+    var result: Set<YouTubeRTMPSCanvas> = []
+    if landscape != nil { result.insert(.landscape) }
+    if portrait != nil { result.insert(.portrait) }
+    return result
+  }
+
+  public func destination(for canvas: YouTubeRTMPSCanvas) -> YouTubeRTMPSDestination? {
+    switch canvas {
+    case .landscape: landscape
+    case .portrait: portrait
+    }
+  }
+
+  public var description: String { "YouTubeRTMPSDestinations(<redacted>)" }
+  public var debugDescription: String { description }
 }
 
 public struct YouTubeDualRTMPSDestinations: Sendable, Equatable, CustomStringConvertible,
@@ -41,6 +83,7 @@ public actor YouTubeDualRTMPSPublisher {
   private let portrait: YouTubeRTMPSPublisher
   private enum State { case idle, starting, started, stopping }
   private var state = State.idle
+  private var activeCanvases: Set<YouTubeRTMPSCanvas> = []
   private var generation: UInt64 = 0
   private var stopTask: Task<Void, Never>?
 
@@ -63,23 +106,41 @@ public actor YouTubeDualRTMPSPublisher {
     landscapeAudioFormat: YouTubeRTMPSAudioFormat,
     portraitAudioFormat: YouTubeRTMPSAudioFormat
   ) async throws {
+    try await start(
+      destinations: YouTubeRTMPSDestinations(destinations),
+      videoFormats: [.landscape: landscapeVideoFormat, .portrait: portraitVideoFormat],
+      audioFormats: [.landscape: landscapeAudioFormat, .portrait: portraitAudioFormat])
+  }
+
+  public func start(
+    destinations: YouTubeRTMPSDestinations,
+    videoFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSVideoFormat],
+    audioFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSAudioFormat]
+  ) async throws {
     guard state == .idle else { throw YouTubeRTMPSError.protocolFailure("dual start") }
+    let canvases = destinations.canvases
+    guard canvases.allSatisfy({ videoFormats[$0] != nil && audioFormats[$0] != nil })
+    else { throw YouTubeRTMPSError.invalidDestination }
     generation &+= 1
     let startGeneration = generation
     state = .starting
     do {
       try await withThrowingTaskGroup(of: Void.self) { group in
-        group.addTask {
-          try await self.landscape.connect(
-            to: destinations.landscape,
-            videoFormat: landscapeVideoFormat,
-            audioFormat: landscapeAudioFormat)
+        if let destination = destinations.landscape,
+          let videoFormat = videoFormats[.landscape], let audioFormat = audioFormats[.landscape]
+        {
+          group.addTask {
+            try await self.landscape.connect(
+              to: destination, videoFormat: videoFormat, audioFormat: audioFormat)
+          }
         }
-        group.addTask {
-          try await self.portrait.connect(
-            to: destinations.portrait,
-            videoFormat: portraitVideoFormat,
-            audioFormat: portraitAudioFormat)
+        if let destination = destinations.portrait,
+          let videoFormat = videoFormats[.portrait], let audioFormat = audioFormats[.portrait]
+        {
+          group.addTask {
+            try await self.portrait.connect(
+              to: destination, videoFormat: videoFormat, audioFormat: audioFormat)
+          }
         }
         do {
           while try await group.next() != nil {}
@@ -93,6 +154,7 @@ public actor YouTubeDualRTMPSPublisher {
       guard generation == startGeneration, state == .starting else {
         throw YouTubeRTMPSError.notPublishing
       }
+      activeCanvases = canvases
       state = .started
     } catch {
       if generation == startGeneration {
@@ -110,7 +172,9 @@ public actor YouTubeDualRTMPSPublisher {
     _ sample: YouTubeRTMPSVideoSample,
     canvas: YouTubeRTMPSCanvas
   ) async throws {
-    guard state == .started else { throw YouTubeRTMPSError.notPublishing }
+    guard state == .started, activeCanvases.contains(canvas) else {
+      throw YouTubeRTMPSError.notPublishing
+    }
     let appendGeneration = generation
     do {
       switch canvas {
@@ -129,7 +193,9 @@ public actor YouTubeDualRTMPSPublisher {
     _ sample: YouTubeRTMPSAudioSample,
     canvas: YouTubeRTMPSCanvas
   ) async throws {
-    guard state == .started else { throw YouTubeRTMPSError.notPublishing }
+    guard state == .started, activeCanvases.contains(canvas) else {
+      throw YouTubeRTMPSError.notPublishing
+    }
     let appendGeneration = generation
     do {
       switch canvas {
@@ -163,6 +229,7 @@ public actor YouTubeDualRTMPSPublisher {
     async let portraitStop: Void = portrait.finish()
     _ = await (landscapeStop, portraitStop)
     guard generation == stopGeneration else { return }
+    activeCanvases.removeAll()
     stopTask = nil
     state = .idle
   }

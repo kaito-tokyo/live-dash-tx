@@ -5,28 +5,55 @@
 @preconcurrency import CoreImage
 import Foundation
 import LDTXTaskQueue
-import LDTXWorkspace
 @preconcurrency import Vision
+
+/// The OCR request settings independent of any persisted Workspace format.
+public struct VisionOCRConfiguration: Equatable, Sendable {
+  public var prefersAccurateRecognition: Bool
+  public var recognitionLanguages: [String]
+  public var usesLanguageCorrection: Bool
+  public var customWords: [String]
+  public var minimumTextHeight: Float?
+
+  public init(
+    prefersAccurateRecognition: Bool,
+    recognitionLanguages: [String],
+    usesLanguageCorrection: Bool,
+    customWords: [String] = [],
+    minimumTextHeight: Float? = nil
+  ) {
+    self.prefersAccurateRecognition = prefersAccurateRecognition
+    self.recognitionLanguages = recognitionLanguages
+    self.usesLanguageCorrection = usesLanguageCorrection
+    self.customWords = customWords
+    self.minimumTextHeight = minimumTextHeight
+  }
+
+}
 
 public actor VisionOCRService {
   public init() {}
 
   public func recognizeText(
     in image: CIImage,
-    definition: WorkspaceVisionOCRDefinition,
+    configuration: VisionOCRConfiguration,
     stopToken: StopToken
   ) async throws -> VisionAnalysis {
     try stopToken.check()
     try Task.checkCancellation()
     let startedAt = ContinuousClock.now
     let request = VNRecognizeTextRequest()
-    request.recognitionLevel = definition.recognitionLevel == .fast ? .fast : .accurate
-    if !definition.recognitionLanguages.isEmpty {
-      request.recognitionLanguages = definition.recognitionLanguages
+    request.recognitionLevel = configuration.prefersAccurateRecognition ? .accurate : .fast
+    if !configuration.recognitionLanguages.isEmpty {
+      request.recognitionLanguages = configuration.recognitionLanguages
     } else {
       request.automaticallyDetectsLanguage = true
     }
-    request.usesLanguageCorrection = definition.usesLanguageCorrection
+    request.usesLanguageCorrection = configuration.usesLanguageCorrection
+    request.customWords = configuration.customWords
+    if let minimumTextHeight = configuration.minimumTextHeight {
+      request.minimumTextHeight = minimumTextHeight
+    }
 
     let operation = VisionOCRRequestOperation(image: image, request: request)
     try await withTaskCancellationHandler {

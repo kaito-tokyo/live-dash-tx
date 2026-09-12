@@ -1,0 +1,40 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Version 4 Workspace Input Device definitions.
+syntax = "proto3";
+
+package ldtx.workspace.v4;
+
+// Wraps one concrete Input Device definition.
+message InputDeviceWrapper {
+  oneof definition {
+    // The Video Input Device definition. Mutually exclusive with the other
+    // fields.
+    VideoInputDevice video_device = 1;
+    // The Audio Input Device definition. Mutually exclusive with the other
+    // fields.
+    AudioInputDevice audio_device = 2;
+  }
+}
+
+// A video Input Device available in a Workspace.
+message VideoInputDevice {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Input Device shown in the Workspace sidebar.
+  string display_name = 2;
+}
+
+// An audio Input Device available in a Workspace.
+message AudioInputDevice {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Input Device shown in the Workspace sidebar.
+  string display_name = 2;
+}

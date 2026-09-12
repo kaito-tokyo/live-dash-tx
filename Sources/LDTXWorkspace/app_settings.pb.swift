@@ -105,6 +105,77 @@ public nonisolated struct Ldtx_App_V1_PreviewSettings: Sendable {
   public init() {}
 }
 
+/// App-local state for every Workspace package, keyed by its standardized path.
+public nonisolated struct Ldtx_App_V1_WorkspaceLocalStateStore: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var statesByWorkspacePath: Dictionary<String,Ldtx_App_V1_WorkspaceLocalState> = [:]
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+/// App-local state for one Workspace package.
+public nonisolated struct Ldtx_App_V1_WorkspaceLocalState: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// The selected Program internal ID. When absent, no Program is selected.
+  public var selectedProgramInternalID: UInt64 {
+    get {_selectedProgramInternalID ?? 0}
+    set {_selectedProgramInternalID = newValue}
+  }
+  /// Returns true if `selectedProgramInternalID` has been explicitly set.
+  public var hasSelectedProgramInternalID: Bool {self._selectedProgramInternalID != nil}
+  /// Clears the value of `selectedProgramInternalID`. Subsequent reads from it will return its default value.
+  public mutating func clearSelectedProgramInternalID() {self._selectedProgramInternalID = nil}
+
+  /// Physical device IDs for Video Input Devices, keyed by their internal IDs.
+  public var videoInputDevicePhysicalIds: Dictionary<UInt64,String> = [:]
+
+  /// Physical device IDs for Audio Input Devices, keyed by their internal IDs.
+  public var audioInputDevicePhysicalIds: Dictionary<UInt64,String> = [:]
+
+  /// Audio Input Device internal IDs routed to the local monitor output.
+  public var monitorAudioInputDeviceInternalIds: [UInt64] = []
+
+  /// Whether each Program synchronizes the Landscape mix to Portrait, keyed by
+  /// Program internal ID.
+  public var synchronizesLandscapeMixToPortraitByProgramInternalID: Dictionary<UInt64,Bool> = [:]
+
+  /// Saved Stream Key configuration ID selected for Landscape RTMPS output.
+  public var landscapeYoutubeLiveStreamID: String {
+    get {_landscapeYoutubeLiveStreamID ?? String()}
+    set {_landscapeYoutubeLiveStreamID = newValue}
+  }
+  /// Returns true if `landscapeYoutubeLiveStreamID` has been explicitly set.
+  public var hasLandscapeYoutubeLiveStreamID: Bool {self._landscapeYoutubeLiveStreamID != nil}
+  /// Clears the value of `landscapeYoutubeLiveStreamID`. Subsequent reads from it will return its default value.
+  public mutating func clearLandscapeYoutubeLiveStreamID() {self._landscapeYoutubeLiveStreamID = nil}
+
+  /// Saved Stream Key configuration ID selected for Portrait RTMPS output.
+  public var portraitYoutubeLiveStreamID: String {
+    get {_portraitYoutubeLiveStreamID ?? String()}
+    set {_portraitYoutubeLiveStreamID = newValue}
+  }
+  /// Returns true if `portraitYoutubeLiveStreamID` has been explicitly set.
+  public var hasPortraitYoutubeLiveStreamID: Bool {self._portraitYoutubeLiveStreamID != nil}
+  /// Clears the value of `portraitYoutubeLiveStreamID`. Subsequent reads from it will return its default value.
+  public mutating func clearPortraitYoutubeLiveStreamID() {self._portraitYoutubeLiveStreamID = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _selectedProgramInternalID: UInt64? = nil
+  fileprivate var _landscapeYoutubeLiveStreamID: String? = nil
+  fileprivate var _portraitYoutubeLiveStreamID: String? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "ldtx.app.v1"
@@ -241,6 +312,100 @@ nonisolated extension Ldtx_App_V1_PreviewSettings: SwiftProtobuf.Message, SwiftP
 
   public static func ==(lhs: Ldtx_App_V1_PreviewSettings, rhs: Ldtx_App_V1_PreviewSettings) -> Bool {
     if lhs.prefersColor != rhs.prefersColor {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ldtx_App_V1_WorkspaceLocalStateStore: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WorkspaceLocalStateStore"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}states_by_workspace_path\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMessageMap<SwiftProtobuf.ProtobufString,Ldtx_App_V1_WorkspaceLocalState>.self, value: &self.statesByWorkspacePath) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.statesByWorkspacePath.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMessageMap<SwiftProtobuf.ProtobufString,Ldtx_App_V1_WorkspaceLocalState>.self, value: self.statesByWorkspacePath, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ldtx_App_V1_WorkspaceLocalStateStore, rhs: Ldtx_App_V1_WorkspaceLocalStateStore) -> Bool {
+    if lhs.statesByWorkspacePath != rhs.statesByWorkspacePath {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Ldtx_App_V1_WorkspaceLocalState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".WorkspaceLocalState"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}selected_program_internal_id\0\u{3}video_input_device_physical_ids\0\u{3}audio_input_device_physical_ids\0\u{3}monitor_audio_input_device_internal_ids\0\u{3}synchronizes_landscape_mix_to_portrait_by_program_internal_id\0\u{3}landscape_youtube_live_stream_id\0\u{3}portrait_youtube_live_stream_id\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularUInt64Field(value: &self._selectedProgramInternalID) }()
+      case 2: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufUInt64,SwiftProtobuf.ProtobufString>.self, value: &self.videoInputDevicePhysicalIds) }()
+      case 3: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufUInt64,SwiftProtobuf.ProtobufString>.self, value: &self.audioInputDevicePhysicalIds) }()
+      case 4: try { try decoder.decodeRepeatedUInt64Field(value: &self.monitorAudioInputDeviceInternalIds) }()
+      case 5: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufUInt64,SwiftProtobuf.ProtobufBool>.self, value: &self.synchronizesLandscapeMixToPortraitByProgramInternalID) }()
+      case 6: try { try decoder.decodeSingularStringField(value: &self._landscapeYoutubeLiveStreamID) }()
+      case 7: try { try decoder.decodeSingularStringField(value: &self._portraitYoutubeLiveStreamID) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._selectedProgramInternalID {
+      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 1)
+    } }()
+    if !self.videoInputDevicePhysicalIds.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufUInt64,SwiftProtobuf.ProtobufString>.self, value: self.videoInputDevicePhysicalIds, fieldNumber: 2)
+    }
+    if !self.audioInputDevicePhysicalIds.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufUInt64,SwiftProtobuf.ProtobufString>.self, value: self.audioInputDevicePhysicalIds, fieldNumber: 3)
+    }
+    if !self.monitorAudioInputDeviceInternalIds.isEmpty {
+      try visitor.visitPackedUInt64Field(value: self.monitorAudioInputDeviceInternalIds, fieldNumber: 4)
+    }
+    if !self.synchronizesLandscapeMixToPortraitByProgramInternalID.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufUInt64,SwiftProtobuf.ProtobufBool>.self, value: self.synchronizesLandscapeMixToPortraitByProgramInternalID, fieldNumber: 5)
+    }
+    try { if let v = self._landscapeYoutubeLiveStreamID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 6)
+    } }()
+    try { if let v = self._portraitYoutubeLiveStreamID {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 7)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Ldtx_App_V1_WorkspaceLocalState, rhs: Ldtx_App_V1_WorkspaceLocalState) -> Bool {
+    if lhs._selectedProgramInternalID != rhs._selectedProgramInternalID {return false}
+    if lhs.videoInputDevicePhysicalIds != rhs.videoInputDevicePhysicalIds {return false}
+    if lhs.audioInputDevicePhysicalIds != rhs.audioInputDevicePhysicalIds {return false}
+    if lhs.monitorAudioInputDeviceInternalIds != rhs.monitorAudioInputDeviceInternalIds {return false}
+    if lhs.synchronizesLandscapeMixToPortraitByProgramInternalID != rhs.synchronizesLandscapeMixToPortraitByProgramInternalID {return false}
+    if lhs._landscapeYoutubeLiveStreamID != rhs._landscapeYoutubeLiveStreamID {return false}
+    if lhs._portraitYoutubeLiveStreamID != rhs._portraitYoutubeLiveStreamID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

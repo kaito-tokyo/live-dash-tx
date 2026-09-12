@@ -1,0 +1,76 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Version 4 Workspace Vision definitions.
+syntax = "proto3";
+
+package ldtx.workspace.v4;
+
+// Wraps one concrete Vision definition.
+message VisionWrapper {
+  oneof definition {
+    // The OCR Vision definition. Mutually exclusive with the other fields.
+    OcrVision ocr_vision = 1;
+  }
+}
+
+// A normalized rectangle in the input image. Its origin is relative to the
+// lower-left corner.
+message VisionRegionOfInterest {
+  // The horizontal origin, in the range [0, 1].
+  float x = 1;
+  // The vertical origin, in the range [0, 1].
+  float y = 2;
+  // The width, in the range [0, 1].
+  float width = 3;
+  // The height, in the range [0, 1].
+  float height = 4;
+}
+
+// Wraps one concrete Vision trigger definition.
+message VisionTriggerWrapper {
+  oneof definition {
+    // The interval-based Vision trigger definition. Mutually exclusive with
+    // the other fields.
+    IntervalVisionTrigger interval_trigger = 1;
+  }
+}
+
+// A Vision trigger that invokes Vision at a regular interval.
+message IntervalVisionTrigger {
+  // The interval between automatic Vision updates in seconds.
+  double interval_seconds = 1;
+}
+
+// An image-analysis request that recognizes text in an image.
+message OcrVision {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Vision shown in the Workspace sidebar.
+  string display_name = 2;
+  // The conditions that automatically trigger this Vision.
+  repeated VisionTriggerWrapper triggers = 3;
+  oneof source {
+    // Uses this Input Device as input.
+    uint64 input_device_internal_id = 4;
+  }
+  // The region of the input image in which Vision performs the request.
+  VisionRegionOfInterest region_of_interest = 5;
+  // Whether text recognition prioritizes accuracy over speed. False uses the
+  // fast level.
+  bool accurate = 6;
+  // The BCP 47 languages Vision detects, in priority order. An empty list
+  // enables automatic language detection.
+  repeated string recognition_languages = 7;
+  // Whether Vision applies language correction during text recognition.
+  bool uses_language_correction = 8;
+  // The words that supplement Vision's lexicon during word recognition.
+  // Vision uses these only when language correction is enabled.
+  repeated string custom_words = 9;
+  // The minimum text height relative to input image height. When absent, the
+  // Vision Framework default applies.
+  optional float minimum_text_height = 10;
+}

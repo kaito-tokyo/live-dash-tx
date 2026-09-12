@@ -1,0 +1,76 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Version 4 Workspace mutable preferences.
+syntax = "proto3";
+
+package ldtx.workspace.v4;
+
+// Contains mutable preferences for one WorkspaceDefinitionV4.
+message WorkspacePreferencesV4 {
+  // Mutable preferences for Programs in this Workspace, keyed by Program
+  // internal_id.
+  map<uint64, ProgramPreference> program_preferences = 1;
+  // The Workspace-wide monitor volume in decibels.
+  double monitor_volume = 2;
+}
+
+// Contains mutable preferences for one Program.
+message ProgramPreference {
+  // The Landscape audio gain in decibels for each Audio Input Device, keyed by
+  // Input Device internal_id.
+  map<uint64, double> landscape_audio_channel_gains = 1;
+  // Whether each Landscape Audio Input Device is muted, keyed by Input Device
+  // internal_id.
+  map<uint64, bool> landscape_audio_channel_muted = 2;
+  // The transforms for Landscape Video Layers, keyed by Video Input Device or
+  // Video Component internal_id.
+  map<uint64, BasicTransform> landscape_video_layer_transforms = 3;
+  // Whether each Landscape Video Layer is muted, keyed by Video Input Device
+  // or Video Component internal_id.
+  map<uint64, bool> landscape_video_layer_muted = 4;
+  // The Portrait audio gain in decibels for each Audio Input Device, keyed by
+  // Input Device internal_id.
+  map<uint64, double> portrait_audio_channel_gains = 5;
+  // Whether each Portrait Audio Input Device is muted, keyed by Input Device
+  // internal_id.
+  map<uint64, bool> portrait_audio_channel_muted = 6;
+  // The transforms for Portrait Video Layers, keyed by Video Input Device or
+  // Video Component internal_id.
+  map<uint64, BasicTransform> portrait_video_layer_transforms = 7;
+  // Whether each Portrait Video Layer is muted, keyed by Video Input Device or
+  // Video Component internal_id.
+  map<uint64, bool> portrait_video_layer_muted = 8;
+  // The Landscape master volume in decibels.
+  double landscape_master_volume = 9;
+  // The Portrait master volume in decibels.
+  double portrait_master_volume = 10;
+}
+
+// The basic transform applied to a Video Layer, which is a Video Input Device
+// or a Video Component.
+message BasicTransform {
+  // The horizontal translation in coordinates normalized to the Canvas that
+  // renders this Video Layer, in the range [0, 1].
+  float translation_x = 1;
+  // The vertical translation in coordinates normalized to the Canvas that
+  // renders this Video Layer, in the range [0, 1].
+  float translation_y = 2;
+  // The horizontal scale.
+  float scale_x = 3;
+  // The vertical scale.
+  float scale_y = 4;
+  // The top inset as a fraction of this Video Layer's statically defined
+  // content height, in the range [0, 1].
+  float top_inset = 5;
+  // The right inset as a fraction of this Video Layer's statically defined
+  // content width, in the range [0, 1].
+  float right_inset = 6;
+  // The bottom inset as a fraction of this Video Layer's statically defined
+  // content height, in the range [0, 1].
+  float bottom_inset = 7;
+  // The left inset as a fraction of this Video Layer's statically defined
+  // content width, in the range [0, 1].
+  float left_inset = 8;
+}

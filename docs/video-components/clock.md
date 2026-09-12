@@ -63,7 +63,9 @@ Changing **Clock appearance** updates every **Program** that uses it. Changing a
 
 ## Migration
 
-The application accepts Workspace v3 only and does not migrate older bundles while loading. Convert legacy Clock placement into the Landscape Canvas's Video Layer preferences, create the required Portrait Canvas, and compile the completed v3 JSON mirrors as described in [Workspace v3](../workspace-v3.md).
+Workspace v4 is the target persistence format. Its package contract and CLI
+workflow are described in [Workspace v4](../workspace-v4.md); application
+runtime adoption is in progress.
 
 ## Terminology
 

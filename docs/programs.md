@@ -60,9 +60,9 @@ A **Video Layer** adds one **Video Component** to the **Program**'s **Video Trac
 
 **Video Layer** positions use a fixed logical coordinate space of **1920 × 1080**. The X and Y values displayed in the editor always use this space; changing a **Program** **Canvas Size** does not change their meaning or rewrite saved positions.
 
-X and Y are logical coordinates, not **Canvas Size** pixels. At runtime, the placement is normalized from the **1920 × 1080** space and mapped to the active canvas. For example, X=960 and Y=540 remain the center position for a **1280 × 720** canvas. This identical coordinate contract applies to every layer type that supports placement, including **Input Camera Device** and **Clock**.
+X and Y are logical coordinates, not **Canvas Size** pixels. At runtime, the placement is normalized from the **1920 × 1080** space and mapped to the active canvas. For example, X=960 and Y=540 remain the center position for a **1280 × 720** canvas. This identical coordinate contract applies to every layer type that supports placement, including **VFX Source** and **Clock**.
 
-Scale is the only layer sizing control. Width and height are intentionally not independent layer settings. **Input Camera Device** and **Clock** layers support X, Y, and Scale. Full-canvas components such as fills, gradients, and test patterns do not expose placement controls.
+Scale is the only layer sizing control. Width and height are intentionally not independent layer settings. **VFX Source** and **Clock** layers support X, Y, and Scale. Full-canvas components such as fills, gradients, and test patterns do not expose placement controls.
 
 ## Video Components
 
@@ -74,7 +74,9 @@ This separation means that changing a component's appearance updates every **Pro
 
 **Video Track** placement is stored in `ProgramPreferences.videoLayersByProgramName`, not in the **Program Definition** or **Video Component Definition**. Other **Output Track** types may use settings that are appropriate to their own semantics; **Video Layer** placement is not a generic **Output Track**-settings abstraction.
 
-The application reads and writes Workspace v3 only. Older bundles are rejected with conversion guidance; runtime code contains no fallback logic. Perform legacy conversion outside the application using the field mapping and `ldtx workspace compile` workflow in [Workspace v3](workspace-v3.md).
+Workspace v4 is the target persistence format. Its package contract and CLI
+workflow are described in [Workspace v4](workspace-v4.md); application runtime
+adoption is in progress.
 
 ## Saving and Output
 

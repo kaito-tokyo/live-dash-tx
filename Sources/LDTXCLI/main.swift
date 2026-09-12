@@ -67,46 +67,142 @@ struct LDTXHelper: AsyncParsableCommand {
 private struct WorkspaceCommand: ParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "workspace",
-    abstract: "Compile and validate Workspace v3 packages.",
-    subcommands: [Compile.self, Validate.self, EmitJSON.self]
+    abstract: "Create, inspect, and validate protobuf-only Workspace v4 packages.",
+    subcommands: [Create.self, Dump.self, Validate.self]
   )
 
-  struct Compile: ParsableCommand {
+  struct Create: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-      abstract: "Compile v3 JSON mirrors into canonical protobuf files.")
+      abstract: "Create a new Workspace v4 package, optionally from protobuf JSON.")
+    @Argument(help: "Path for a new .ldtxworkspace package.") var package: String
+    @Option(help: "Workspace display name.") var name: String?
+    @Option(help: "WorkspaceDefinitionV4 protobuf JSON to import.") var json: String?
+    @Option(help: "WorkspacePreferencesV4 protobuf JSON to import with --json.")
+    var preferencesJSON: String?
+    @Flag(help: "Replace an existing Workspace package at the destination.") var replace = false
+
+    mutating func run() async throws {
+      let url = URL(fileURLWithPath: package).standardizedFileURL
+      let existedBeforeCreate = FileManager.default.fileExists(atPath: url.path)
+      guard replace || !existedBeforeCreate else {
+        throw ValidationError("Workspace already exists: \(url.path)")
+      }
+      guard preferencesJSON == nil || json != nil else {
+        throw ValidationError("--preferences-json requires --json")
+      }
+      let lockService = WorkspaceV4PackageLockService()
+      let lock = try lockService.acquire(at: url, createsPackageDirectory: true)
+      defer { lockService.release(lock) }
+      do {
+        let workspace: WorkspaceV4Package
+        if let json {
+          var definition = try Ldtx_Workspace_V4_WorkspaceDefinitionV4(
+            jsonUTF8Data: Data(contentsOf: URL(fileURLWithPath: json)))
+          if let name { definition.displayName = name }
+          let preferences =
+            try preferencesJSON.map {
+              try Ldtx_Workspace_V4_WorkspacePreferencesV4(
+                jsonUTF8Data: Data(contentsOf: URL(fileURLWithPath: $0)))
+            } ?? Ldtx_Workspace_V4_WorkspacePreferencesV4()
+          workspace = WorkspaceV4Package(
+            definition: WorkspaceV4DefinitionDocument(
+              externalID: WorkspaceV4PersistenceCodec.makeExternalID(), definition: definition),
+            preferences: WorkspaceV4PreferencesDocument(
+              externalID: WorkspaceV4PersistenceCodec.makeExternalID(), preferences: preferences))
+        } else {
+          workspace = WorkspaceV4Package(
+            definition: WorkspaceV4DefinitionDocument(
+              externalID: WorkspaceV4PersistenceCodec.makeExternalID(),
+              definition: Ldtx_Workspace_V4_WorkspaceDefinitionV4.with {
+                $0.displayName = name ?? url.deletingPathExtension().lastPathComponent
+              }),
+            preferences: WorkspaceV4PreferencesDocument(
+              externalID: WorkspaceV4PersistenceCodec.makeExternalID(),
+              preferences: Ldtx_Workspace_V4_WorkspacePreferencesV4()))
+        }
+        try WorkspaceV4PackageService(backupService: WorkspaceBackupService()).save(
+          workspace, to: url)
+        print("Created Workspace v4: \(url.path)")
+      } catch {
+        if !existedBeforeCreate {
+          try? FileManager.default.removeItem(at: url)
+        }
+        throw error
+      }
+    }
+  }
+
+  struct Dump: ParsableCommand {
+    static let configuration = CommandConfiguration(
+      abstract: "Print a read-only debug dump of stored Program layers.")
     @Argument(help: "Path to an .ldtxworkspace package.") var package: String
+    @Option(help: "Limit output to one Program name.") var program: String?
 
     mutating func run() throws {
       let url = URL(fileURLWithPath: package).standardizedFileURL
-      try WorkspacePackageService().compileJSONMirrors(at: url)
-      print("Compiled Workspace v3: \(url.path)")
+      let lockService = WorkspaceV4PackageLockService()
+      let lock = try lockService.acquire(at: url)
+      defer { lockService.release(lock) }
+      let dump = try workspaceV4DebugDump(
+        at: url, programName: program)
+      let encoder = JSONEncoder()
+      encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+      print(String(decoding: try encoder.encode(dump), as: UTF8.self))
     }
   }
 
   struct Validate: ParsableCommand {
     static let configuration = CommandConfiguration(
-      abstract: "Validate v3 protobuf files, references, profiles, and JSON mirrors.")
+      abstract: "Validate protobuf-only v4 files, references, and profiles.")
     @Argument(help: "Path to an .ldtxworkspace package.") var package: String
 
     mutating func run() throws {
       let url = URL(fileURLWithPath: package).standardizedFileURL
-      try WorkspacePackageService().validatePackage(at: url)
-      print("OK: Workspace v3 \(url.path)")
+      let lockService = WorkspaceV4PackageLockService()
+      let lock = try lockService.acquire(at: url)
+      defer { lockService.release(lock) }
+      _ = try WorkspaceV4PackageService().load(at: url)
+      print("OK: Workspace v4 \(url.path)")
     }
   }
+}
 
-  struct EmitJSON: ParsableCommand {
-    static let configuration = CommandConfiguration(
-      commandName: "emit-json",
-      abstract: "Regenerate JSON mirrors from the canonical v3 protobuf files.")
-    @Argument(help: "Path to an .ldtxworkspace package.") var package: String
-
-    mutating func run() throws {
-      let url = URL(fileURLWithPath: package).standardizedFileURL
-      try WorkspacePackageService().emitJSONMirrors(at: url)
-      print("Emitted Workspace v3 JSON: \(url.path)")
-    }
+public struct WorkspaceV4DebugDump: Codable, Equatable {
+  static let format = "ldtx-workspace-debug-dump-v4"
+  public struct Program: Codable, Equatable {
+    public var internalID: UInt64
+    public var displayName: String
+    public var landscapeVideoLayerInternalIDs: [UInt64]
+    public var portraitVideoLayerInternalIDs: [UInt64]
   }
+  public var format: String
+  public var definitionExternalID: UUID
+  public var preferencesExternalID: UUID
+  public var displayName: String
+  public var programs: [Program]
+}
+
+public func workspaceV4DebugDump(
+  at packageURL: URL, programName: String? = nil
+) throws -> WorkspaceV4DebugDump {
+  let workspace = try WorkspaceV4PackageService().load(at: packageURL)
+  let programs = workspace.definition.definition.programs.filter {
+    programName == nil || $0.displayName == programName
+  }
+  guard programName == nil || !programs.isEmpty else {
+    throw ValidationError("Program not found: \(programName ?? "")")
+  }
+  return WorkspaceV4DebugDump(
+    format: WorkspaceV4DebugDump.format,
+    definitionExternalID: workspace.definition.externalID,
+    preferencesExternalID: workspace.preferences.externalID,
+    displayName: workspace.definition.definition.displayName,
+    programs: programs.map {
+      WorkspaceV4DebugDump.Program(
+        internalID: $0.internalID, displayName: $0.displayName,
+        landscapeVideoLayerInternalIDs: $0.landscapeVideoLayerInternalIds,
+        portraitVideoLayerInternalIDs: $0.portraitVideoLayerInternalIds)
+    })
 }
 
 private enum RecordingCanvasArgument: String, ExpressibleByArgument {

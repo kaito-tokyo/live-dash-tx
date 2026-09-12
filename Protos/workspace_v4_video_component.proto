@@ -1,0 +1,199 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Version 4 Workspace Video Component definitions.
+syntax = "proto3";
+
+package ldtx.workspace.v4;
+
+import "workspace_v4_vfx.proto";
+
+// Wraps one concrete Video Component definition.
+message VideoComponentWrapper {
+  oneof definition {
+    // The solid-color fill Video Component definition. Mutually exclusive with
+    // the other fields.
+    FillSolidColorComponent solid_color_fill = 1;
+    // The linear-gradient fill Video Component definition. Mutually exclusive
+    // with the other fields.
+    FillLinearGradientComponent linear_gradient_fill = 2;
+    // The radial-gradient fill Video Component definition. Mutually exclusive
+    // with the other fields.
+    FillRadialGradientComponent radial_gradient_fill = 3;
+    // The conic-gradient fill Video Component definition. Mutually exclusive
+    // with the other fields.
+    FillConicGradientComponent conic_gradient_fill = 4;
+    // The VFX Source Video Component definition. Mutually exclusive with the
+    // other fields.
+    VfxSourceComponent vfx_source = 5;
+    // The clock Video Component definition. Mutually exclusive with the other
+    // fields.
+    ClockComponent clock = 6;
+    // The test-pattern Video Component definition. Mutually exclusive with the
+    // other fields.
+    TestPatternComponent test_pattern = 7;
+  }
+}
+
+// A Video Component that renders a CSS solid-color fill.
+message FillSolidColorComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+  // The color of this fill.
+  ExtendedSrgbColor color = 3;
+}
+
+// A Video Component that renders a CSS linear-gradient fill.
+message FillLinearGradientComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+  // The horizontal coordinate of the gradient start point, expressed as a
+  // fraction of the width of the Canvas that renders this Fill, in [0, 1].
+  float start_x = 3;
+  // The vertical coordinate of the gradient start point, expressed as a
+  // fraction of the height of the Canvas that renders this Fill, in [0, 1].
+  float start_y = 4;
+  // The color at the gradient start point.
+  ExtendedSrgbColor start_color = 5;
+  // The horizontal coordinate of the gradient end point, expressed as a
+  // fraction of the width of the Canvas that renders this Fill, in [0, 1].
+  float end_x = 6;
+  // The vertical coordinate of the gradient end point, expressed as a
+  // fraction of the height of the Canvas that renders this Fill, in [0, 1].
+  float end_y = 7;
+  // The color at the gradient end point.
+  ExtendedSrgbColor end_color = 8;
+}
+
+// A Video Component that renders a CSS radial-gradient fill.
+message FillRadialGradientComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+  // The horizontal coordinate of the gradient center, expressed as a fraction
+  // of the width of the Canvas that renders this Fill, in [0, 1].
+  float center_x = 3;
+  // The vertical coordinate of the gradient center, expressed as a fraction
+  // of the height of the Canvas that renders this Fill, in [0, 1].
+  float center_y = 4;
+  // The inner radius parameter is in [0, 1] and must be less than
+  // outer_radius.
+  float inner_radius = 5;
+  // The outer radius parameter is in [0, 1] and must be greater than
+  // inner_radius.
+  float outer_radius = 6;
+  // The color at the inner radius.
+  ExtendedSrgbColor inner_color = 7;
+  // The color at the outer radius.
+  ExtendedSrgbColor outer_color = 8;
+}
+
+// A Video Component that renders a CSS conic-gradient fill.
+message FillConicGradientComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+  // The horizontal coordinate of the gradient center, expressed as a fraction
+  // of the width of the Canvas that renders this Fill, in [0, 1].
+  float center_x = 3;
+  // The vertical coordinate of the gradient center, expressed as a fraction
+  // of the height of the Canvas that renders this Fill, in [0, 1].
+  float center_y = 4;
+  // The gradient start angle in radians.
+  float start_angle_radians = 5;
+  // The color at the gradient start angle.
+  ExtendedSrgbColor start_color = 6;
+  // The color at the gradient end angle.
+  ExtendedSrgbColor end_color = 7;
+}
+
+// A Video Component that applies Video Effects to video from an Input Device.
+message VfxSourceComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+  // The Video Input Device that provides this VFX Source's input video. This
+  // must not reference a Video Component or an Audio Input Device.
+  uint64 input_device_internal_id = 3;
+  // The VFX effects applied to the input video, in evaluation order.
+  repeated VideoEffectWrapper effects = 4;
+}
+
+// A Video Component that renders a test pattern.
+message TestPatternComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+}
+
+// A Video Component that renders the current date and time.
+message ClockComponent {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Video Component shown in the Workspace sidebar.
+  string display_name = 2;
+  // The Clock width normalized to the fixed 1920-pixel Landscape Canvas width,
+  // in [0, 1]. This remains the reference for Portrait projection.
+  float width = 3;
+  // The Clock height normalized to the fixed 1080-pixel Landscape Canvas
+  // height, in [0, 1]. This remains the reference for Portrait projection.
+  float height = 4;
+  // Whether the rendered Clock includes the date.
+  bool shows_date = 5;
+  // Whether the rendered time includes seconds.
+  bool shows_seconds = 6;
+  // Whether the rendered time uses a 24-hour clock.
+  bool uses_24_hour_time = 7;
+  // The fixed offset from UTC in minutes. When absent, the Clock uses the
+  // system time zone.
+  optional sint32 utc_offset_minutes = 8;
+  // The color of the rendered date and time text.
+  ExtendedSrgbColor foreground_color = 9;
+  // The background color of this Clock.
+  ExtendedSrgbColor background_color = 10;
+  // The text outlines rendered around the Clock text, in order.
+  repeated ClockTextOutline outlines = 11;
+}
+
+// A text outline rendered by a Clock.
+message ClockTextOutline {
+  // The outline thickness in output pixels.
+  float thickness = 1;
+  // The color of this outline.
+  ExtendedSrgbColor color = 2;
+}
+
+// A color represented in the extended sRGB color space.
+message ExtendedSrgbColor {
+  // The red component in the extended sRGB color space.
+  float red = 1;
+  // The green component in the extended sRGB color space.
+  float green = 2;
+  // The blue component in the extended sRGB color space.
+  float blue = 3;
+  // The straight alpha component, in the range [0, 1].
+  float alpha = 4;
+}

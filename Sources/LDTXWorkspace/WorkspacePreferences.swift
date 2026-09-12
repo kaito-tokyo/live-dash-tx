@@ -5,6 +5,7 @@
 import Foundation
 import LDTXProgram
 
+@available(*, deprecated, message: "Use WorkspaceV4PreferencesDocument and WorkspaceV4Store.")
 public struct WorkspacePreferences: Codable, Equatable, Sendable {
   public var programPreferences: ProgramPreferences
   public var portraitProgramPreferences: ProgramPreferences

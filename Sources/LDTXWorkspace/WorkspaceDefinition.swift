@@ -5,7 +5,9 @@
 import Foundation
 import LDTXProgram
 
-public struct WorkspaceDefinition: Codable, Equatable, Sendable {
+/// Compatibility-only aggregate retained for non-Workspace Program editor records.
+@available(*, deprecated, message: "Use the V4 protobuf WorkspaceDefinitionV4.")
+public struct LegacyWorkspaceDefinition: Codable, Equatable, Sendable {
   /// Groups local backup generations that belong to the same Workspace lineage.
   ///
   /// Copies may intentionally retain this value. Runtime code must not treat it
@@ -15,14 +17,13 @@ public struct WorkspaceDefinition: Codable, Equatable, Sendable {
   public var programs: [SavedProgramDefinitionRecord]
   public var inputDevices: [WorkspaceInputDeviceRecord]
   public var audioChannels: [ProgramAudioChannel]
-  public var visions: [WorkspaceVisionDefinition]
   public var videoComponents: [WorkspaceVideoComponentRecord]
   public var outputConfiguration: WorkspaceOutputConfiguration
 
-  public static func == (lhs: WorkspaceDefinition, rhs: WorkspaceDefinition) -> Bool {
+  public static func == (lhs: LegacyWorkspaceDefinition, rhs: LegacyWorkspaceDefinition) -> Bool {
     lhs.lineageID == rhs.lineageID && lhs.name == rhs.name && lhs.programs == rhs.programs
       && lhs.inputDevices == rhs.inputDevices
-      && lhs.audioChannels == rhs.audioChannels && lhs.visions == rhs.visions
+      && lhs.audioChannels == rhs.audioChannels
       && lhs.videoComponents == rhs.videoComponents
       && lhs.outputConfiguration == rhs.outputConfiguration
   }
@@ -33,7 +34,6 @@ public struct WorkspaceDefinition: Codable, Equatable, Sendable {
     case programs
     case inputDevices
     case audioChannels
-    case visions
     case videoComponents
     case outputConfiguration
   }
@@ -44,7 +44,6 @@ public struct WorkspaceDefinition: Codable, Equatable, Sendable {
     programs: [SavedProgramDefinitionRecord] = [],
     inputDevices: [WorkspaceInputDeviceRecord] = [],
     audioChannels: [ProgramAudioChannel] = [],
-    visions: [WorkspaceVisionDefinition] = [],
     videoComponents: [WorkspaceVideoComponentRecord] = [],
     outputConfiguration: WorkspaceOutputConfiguration = WorkspaceOutputConfiguration()
   ) {
@@ -53,7 +52,6 @@ public struct WorkspaceDefinition: Codable, Equatable, Sendable {
     self.programs = programs
     self.inputDevices = inputDevices
     self.audioChannels = audioChannels
-    self.visions = visions
     self.videoComponents = videoComponents
     self.outputConfiguration = outputConfiguration
   }
@@ -68,8 +66,6 @@ public struct WorkspaceDefinition: Codable, Equatable, Sendable {
       try container.decodeIfPresent([WorkspaceInputDeviceRecord].self, forKey: .inputDevices) ?? []
     audioChannels =
       try container.decodeIfPresent([ProgramAudioChannel].self, forKey: .audioChannels) ?? []
-    visions =
-      try container.decodeIfPresent([WorkspaceVisionDefinition].self, forKey: .visions) ?? []
     videoComponents =
       try container.decodeIfPresent([WorkspaceVideoComponentRecord].self, forKey: .videoComponents)
       ?? []
@@ -87,7 +83,6 @@ public struct WorkspaceDefinition: Codable, Equatable, Sendable {
     try container.encode(programs, forKey: .programs)
     try container.encode(inputDevices, forKey: .inputDevices)
     try container.encode(audioChannels, forKey: .audioChannels)
-    try container.encode(visions, forKey: .visions)
     try container.encode(videoComponents, forKey: .videoComponents)
     try container.encode(outputConfiguration, forKey: .outputConfiguration)
   }
@@ -341,7 +336,7 @@ private func firstVideoComponentsByName(
   return componentsByName
 }
 
-extension WorkspaceDefinition {
+extension LegacyWorkspaceDefinition {
   @discardableResult
   public mutating func removeInputDevice(named name: String) -> Bool {
     guard inputDevices.contains(where: { $0.id == name }) else { return false }
@@ -359,21 +354,6 @@ extension WorkspaceDefinition {
     if outputConfiguration.videoPTSMasterInputDeviceID == name {
       outputConfiguration.videoPTSMasterInputDeviceID = nil
     }
-    for visionIndex in visions.indices {
-      if case .inputDevice(let inputDeviceName) = visions[visionIndex].source,
-        inputDeviceName == name
-      {
-        visions[visionIndex].source = .landscapeProgramOutput
-      }
-    }
-    return true
-  }
-
-  @discardableResult
-  public mutating func removeVision(named name: String) -> Bool {
-    guard visions.contains(where: { $0.id == name }) else { return false }
-
-    visions.removeAll { $0.id == name }
     return true
   }
 
@@ -403,15 +383,6 @@ extension WorkspaceDefinition {
     }
     self = next
     preferences = nextPreferences
-  }
-
-  public mutating func renameVision(from oldName: String, to newName: String) throws {
-    guard let index = visions.firstIndex(where: { $0.name == oldName }) else {
-      throw WorkspaceRenameError.resourceNotFound(oldName)
-    }
-    try validateRename(newName, excluding: oldName)
-
-    visions[index].name = newName
   }
 
   public mutating func renameVideoComponent(
@@ -482,24 +453,16 @@ extension WorkspaceDefinition {
       component.inputDeviceID = newName
       videoComponents[componentIndex].component = .inputCameraDevice(component)
     }
-    for visionIndex in visions.indices {
-      if case .inputDevice(let name) = visions[visionIndex].source, name == oldName {
-        visions[visionIndex].source = .inputDevice(name: newName)
-      }
-    }
   }
 
   private func validateRename(_ newName: String, excluding oldName: String) throws {
     guard !newName.isEmpty else { throw WorkspaceRenameError.emptyName }
-    guard
-      WorkspaceResourceNameValidator.isAvailable(
-        newName,
-        inputDevices: inputDevices,
-        videoComponents: videoComponents,
-        visions: visions,
-        excludingResourceID: oldName
-      )
-    else {
+    let existingNames = Set(
+      inputDevices.filter { $0.id != oldName }.map(\.name)
+        + videoComponents.filter { $0.id != oldName }.map(\.name)
+        + []
+    )
+    guard !existingNames.contains(newName) else {
       throw WorkspaceRenameError.duplicateName(newName)
     }
   }

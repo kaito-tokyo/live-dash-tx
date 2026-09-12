@@ -278,6 +278,11 @@ public final class ProgramRuntime: @unchecked Sendable {
     }
   }
 
+  public func clearProgram() {
+    programState.clear()
+    lock.withLock { latestPublishedFrame = nil }
+  }
+
   public func updateProgramPreferences(_ preferences: ProgramPreferences) {
     programPreferencesState.replace(with: preferences)
   }

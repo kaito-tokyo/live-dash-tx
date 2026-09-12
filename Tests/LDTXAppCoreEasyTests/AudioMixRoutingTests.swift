@@ -44,32 +44,6 @@ struct AudioMixRoutingUnitTestSuite {
 }
 
 extension AudioMixRoutingUnitTestSuite {
-  @Test func retiredAudioFlagsAreIgnoredInSavedProtobuf() throws {
-    let program = ProgramPreferences(masterVolume: 0.5, monitorVolume: 0.25)
-    var programData = try ProgramPersistenceCodec.encodeProgramPreferences(program)
-    programData.append(contentsOf: [0x38, 0x01])  // Former field 7: advanced = true.
-    #expect(try ProgramPersistenceCodec.decodeProgramPreferences(from: programData) == program)
-    var json = try #require(
-      JSONSerialization.jsonObject(with: JSONEncoder().encode(program)) as? [String: Any])
-    json["advancedAudioRouting"] = true
-    #expect(
-      try JSONDecoder().decode(
-        ProgramPreferences.self,
-        from: JSONSerialization.data(withJSONObject: json)) == program)
-
-    let workspace = WorkspacePreferences(programPreferences: program)
-    var data = try WorkspacePersistenceCodec.encodePreferences(workspace)
-    // Former field 12: map entry "A" = true.
-    data.append(contentsOf: [0x62, 0x05, 0x0a, 0x01, 0x41, 0x10, 0x01])
-    let decoded = try WorkspacePersistenceCodec.decodePreferences(from: data)
-    #expect(decoded == workspace)
-    #expect(
-      try WorkspacePersistenceCodec.encodePreferences(decoded)
-        == WorkspacePersistenceCodec.encodePreferences(workspace))
-  }
-}
-
-extension AudioMixRoutingUnitTestSuite {
   @Test func sharedPhysicalInputAndMatchingBusesAreReused() {
     let engine = WorkspaceAudioEngine(hardwareEnabled: false)
     let input = engine.input(uid: "A", kind: 3)

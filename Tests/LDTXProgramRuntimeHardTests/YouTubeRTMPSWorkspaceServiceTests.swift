@@ -14,6 +14,32 @@ import Testing
 
 @Suite
 struct YouTubeRTMPSWorkspaceServiceIntegrationTestSuite {
+  @Test func startsForOnlyTheConfiguredLandscapeCanvas() async throws {
+    let publisher = FakeDualRTMPSPublisher()
+    let destination = try YouTubeRTMPSDestination(
+      ingestionURL: try #require(URL(string: "rtmps://a.rtmp.youtube.com/live2")),
+      streamName: "landscape")
+    let service = YouTubeRTMPSWorkspaceService(
+      destinations: try YouTubeRTMPSDestinations(landscape: destination),
+      publisher: publisher,
+      failureHandler: { Issue.record("unexpected failure: \($0)") })
+    let video = try await makeVideoSample()
+    let audio = try makePCMSample(frameCount: 2_048)
+
+    async let publishing: Void = service.waitUntilPublishing()
+    service.appendLandscapeVideo(video)
+    service.appendLandscapeAudioMix(audio)
+    try await publishing
+    let result = await service.finish()
+
+    if case .failure(let error) = result { Issue.record("unexpected failure: \(error)") }
+    let snapshot = await publisher.snapshot()
+    #expect(snapshot.startCount == 1)
+    #expect(snapshot.videoCanvases == [.landscape])
+    #expect(snapshot.audioCanvases.contains(.landscape))
+    #expect(!snapshot.audioCanvases.contains(.portrait))
+  }
+
   @Test func startsAfterBothCanvasFormatsAndDeliversBufferedMediaInOrder() async throws {
     let publisher = FakeDualRTMPSPublisher()
     let service = YouTubeRTMPSWorkspaceService(
@@ -198,7 +224,7 @@ private func waitForRTMPSWorkspaceSemaphore(_ semaphore: DispatchSemaphore, time
   semaphore.wait(timeout: .now() + timeout) == .success
 }
 
-private actor FakeDualRTMPSPublisher: YouTubeDualRTMPSPublishing {
+private actor FakeDualRTMPSPublisher: YouTubeRTMPSPublishing {
   struct Snapshot: Sendable {
     var startCount: Int
     var stopCount: Int
@@ -216,15 +242,13 @@ private actor FakeDualRTMPSPublisher: YouTubeDualRTMPSPublishing {
   private var portraitAudioSpecificConfig = Data()
 
   func start(
-    destinations _: YouTubeDualRTMPSDestinations,
-    landscapeVideoFormat _: YouTubeRTMPSVideoFormat,
-    portraitVideoFormat _: YouTubeRTMPSVideoFormat,
-    landscapeAudioFormat: YouTubeRTMPSAudioFormat,
-    portraitAudioFormat: YouTubeRTMPSAudioFormat
+    destinations _: YouTubeRTMPSDestinations,
+    videoFormats _: [YouTubeRTMPSCanvas: YouTubeRTMPSVideoFormat],
+    audioFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSAudioFormat]
   ) async throws {
     startCount += 1
-    landscapeAudioSpecificConfig = landscapeAudioFormat.audioSpecificConfig
-    portraitAudioSpecificConfig = portraitAudioFormat.audioSpecificConfig
+    landscapeAudioSpecificConfig = audioFormats[.landscape]?.audioSpecificConfig ?? Data()
+    portraitAudioSpecificConfig = audioFormats[.portrait]?.audioSpecificConfig ?? Data()
   }
 
   func appendVideo(

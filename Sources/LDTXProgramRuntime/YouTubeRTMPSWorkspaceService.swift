@@ -7,20 +7,18 @@ import Foundation
 import LDTXMP4
 import LDTXYouTubeRTMPS
 
-protocol YouTubeDualRTMPSPublishing: Sendable {
+protocol YouTubeRTMPSPublishing: Sendable {
   func start(
-    destinations: YouTubeDualRTMPSDestinations,
-    landscapeVideoFormat: YouTubeRTMPSVideoFormat,
-    portraitVideoFormat: YouTubeRTMPSVideoFormat,
-    landscapeAudioFormat: YouTubeRTMPSAudioFormat,
-    portraitAudioFormat: YouTubeRTMPSAudioFormat
+    destinations: YouTubeRTMPSDestinations,
+    videoFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSVideoFormat],
+    audioFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSAudioFormat]
   ) async throws
   func appendVideo(_ sample: YouTubeRTMPSVideoSample, canvas: YouTubeRTMPSCanvas) async throws
   func appendAudio(_ sample: YouTubeRTMPSAudioSample, canvas: YouTubeRTMPSCanvas) async throws
   func stop() async
 }
 
-extension YouTubeDualRTMPSPublisher: YouTubeDualRTMPSPublishing {}
+extension YouTubeDualRTMPSPublisher: YouTubeRTMPSPublishing {}
 
 public enum YouTubeRTMPSWorkspaceServiceError: Error, LocalizedError, Equatable {
   case pendingMediaLimitExceeded
@@ -36,9 +34,9 @@ public enum YouTubeRTMPSWorkspaceServiceError: Error, LocalizedError, Equatable 
   }
 }
 
-/// Converts and serially delivers both Workspace Canvas outputs to one YouTube
-/// Dual stream publisher. The service starts both publishers atomically after
-/// receiving the H.264 and PCM formats for both Canvases.
+/// Converts and serially delivers the configured Workspace Canvas outputs to
+/// YouTube RTMPS. The service starts only after receiving H.264 and PCM
+/// formats for every configured Canvas.
 public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
   public typealias FailureHandler = @Sendable (any Error) -> Void
 
@@ -63,15 +61,15 @@ public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
     failureHandler: @escaping FailureHandler
   ) {
     self.init(
-      destinations: destinations,
+      destinations: YouTubeRTMPSDestinations(destinations),
       publisher: YouTubeDualRTMPSPublisher(eventHandler: eventHandler),
       pendingMediaLimit: pendingMediaLimit,
       failureHandler: failureHandler)
   }
 
   init(
-    destinations: YouTubeDualRTMPSDestinations,
-    publisher: any YouTubeDualRTMPSPublishing,
+    destinations: YouTubeRTMPSDestinations,
+    publisher: any YouTubeRTMPSPublishing,
     pendingMediaLimit: Int = 3_600,
     failureHandler: @escaping FailureHandler
   ) {
@@ -80,6 +78,33 @@ public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
     core = Core(
       destinations: destinations,
       publisher: publisher,
+      pendingMediaLimit: pendingMediaLimit,
+      failureHandler: failureHandler)
+  }
+
+  convenience init(
+    destinations: YouTubeDualRTMPSDestinations,
+    publisher: any YouTubeRTMPSPublishing,
+    pendingMediaLimit: Int = 3_600,
+    failureHandler: @escaping FailureHandler
+  ) {
+    self.init(
+      destinations: YouTubeRTMPSDestinations(destinations), publisher: publisher,
+      pendingMediaLimit: pendingMediaLimit, failureHandler: failureHandler)
+  }
+
+  public convenience init(
+    destinations: YouTubeRTMPSDestinations,
+    pendingMediaLimit: Int = 3_600,
+    eventHandler:
+      @escaping @Sendable (
+        YouTubeRTMPSCanvas, YouTubeRTMPSPublisherEvent
+      ) -> Void = { _, _ in },
+    failureHandler: @escaping FailureHandler
+  ) {
+    self.init(
+      destinations: destinations,
+      publisher: YouTubeDualRTMPSPublisher(eventHandler: eventHandler),
       pendingMediaLimit: pendingMediaLimit,
       failureHandler: failureHandler)
   }
@@ -175,8 +200,8 @@ public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
       var audioFormat: YouTubeRTMPSAudioFormat?
     }
 
-    private let destinations: YouTubeDualRTMPSDestinations
-    private let publisher: any YouTubeDualRTMPSPublishing
+    private let destinations: YouTubeRTMPSDestinations
+    private let publisher: any YouTubeRTMPSPublishing
     private let pendingMediaLimit: Int
     private let failureHandler: FailureHandler
     private var landscape = CanvasState()
@@ -188,8 +213,8 @@ public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
     private var publishingWaiters: [CheckedContinuation<Void, any Error>] = []
 
     init(
-      destinations: YouTubeDualRTMPSDestinations,
-      publisher: any YouTubeDualRTMPSPublishing,
+      destinations: YouTubeRTMPSDestinations,
+      publisher: any YouTubeRTMPSPublishing,
       pendingMediaLimit: Int,
       failureHandler: @escaping FailureHandler
     ) {
@@ -247,8 +272,9 @@ public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
         return
       }
       do {
-        try await finishAudio(canvas: .landscape)
-        try await finishAudio(canvas: .portrait)
+        for canvas in destinations.canvases {
+          try await finishAudio(canvas: canvas)
+        }
         try await startIfReady()
       } catch {
         await reportFailure(error)
@@ -283,18 +309,20 @@ public final class YouTubeRTMPSWorkspaceService: @unchecked Sendable {
     }
 
     private func startIfReady() async throws {
-      guard !isPublishing,
-        let landscapeVideoFormat = landscape.videoFormat,
-        let portraitVideoFormat = portrait.videoFormat,
-        let landscapeAudioFormat = landscape.audioFormat,
-        let portraitAudioFormat = portrait.audioFormat
-      else { return }
+      guard !isPublishing else { return }
+      var videoFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSVideoFormat] = [:]
+      var audioFormats: [YouTubeRTMPSCanvas: YouTubeRTMPSAudioFormat] = [:]
+      for canvas in destinations.canvases {
+        guard let videoFormat = videoFormat(for: canvas),
+          let audioFormat = state(for: canvas).audioFormat
+        else { return }
+        videoFormats[canvas] = videoFormat
+        audioFormats[canvas] = audioFormat
+      }
       try await publisher.start(
         destinations: destinations,
-        landscapeVideoFormat: landscapeVideoFormat,
-        portraitVideoFormat: portraitVideoFormat,
-        landscapeAudioFormat: landscapeAudioFormat,
-        portraitAudioFormat: portraitAudioFormat)
+        videoFormats: videoFormats,
+        audioFormats: audioFormats)
       isPublishing = true
       resumePublishingWaiters()
       let buffered = pendingMedia

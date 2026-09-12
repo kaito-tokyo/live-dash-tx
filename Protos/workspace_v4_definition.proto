@@ -1,0 +1,101 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Version 4 Workspace definitions and output configuration.
+syntax = "proto3";
+
+package ldtx.workspace.v4;
+
+import "workspace_v4_input_device.proto";
+import "workspace_v4_video_component.proto";
+import "workspace_v4_vision.proto";
+
+// Version 4 WorkspaceDefinition.
+message WorkspaceDefinitionV4 {
+  // The title of this Workspace.
+  string display_name = 1;
+  // Contains the Video Layers for each Program in this Workspace.
+  repeated ProgramDefinition programs = 2;
+  // Represents Canvas in the Workspace sidebar.
+  CanvasConfiguration canvas_configuration = 3;
+  // Represents Output in the Workspace sidebar.
+  OutputConfiguration output_configuration = 4;
+  // Represents Input Devices in the Workspace sidebar.
+  repeated InputDeviceWrapper input_devices = 5;
+  // Represents Video Components in the Workspace sidebar.
+  repeated VideoComponentWrapper video_components = 6;
+  // Represents Visions in the Workspace sidebar.
+  repeated VisionWrapper visions = 7;
+}
+
+// Defines the Video Layer order for one Program. A Video Layer is either a
+// Video Input Device or a Video Component.
+message ProgramDefinition {
+  // The Workspace-local identifier for this entity. Its most significant bit
+  // is zero; bits 62 through 15 encode milliseconds since the Unix epoch,
+  // and bits 14 through 0 are uniformly random.
+  uint64 internal_id = 1;
+  // The name of this Program shown on the selector.
+  string display_name = 2;
+  // The Video Input Device or Video Component internal IDs in Landscape Video
+  // Layer order.
+  repeated uint64 landscape_video_layer_internal_ids = 3;
+  // The Video Input Device or Video Component internal IDs in Portrait Video
+  // Layer order.
+  repeated uint64 portrait_video_layer_internal_ids = 4;
+}
+
+// Represents Canvas in the Workspace sidebar.
+message CanvasConfiguration {
+  // The profile identifier selected for the Landscape Canvas.
+  string landscape_profile_id = 1;
+  // The profile identifier selected for the Portrait Canvas.
+  string portrait_profile_id = 2;
+  // The output frame rate in frames per second.
+  uint32 frame_rate = 3;
+  // The target video bit rate for the Landscape Canvas in bits per second.
+  uint32 landscape_video_bit_rate = 4;
+  // The target video bit rate for the Portrait Canvas in bits per second.
+  uint32 portrait_video_bit_rate = 5;
+  // The Video Input Device internal ID used as the master clock for video
+  // presentation timestamps. When absent, the runtime default applies.
+  optional uint64 pts_master_video_input_device_internal_id = 6;
+}
+
+// Represents Output in the Workspace sidebar.
+message OutputConfiguration {
+  // Whether the Landscape output is recorded.
+  bool records_landscape = 1;
+  // Whether the Portrait output is recorded.
+  bool records_portrait = 2;
+  // Whether output is streamed to YouTube.
+  bool streams_to_youtube = 3;
+  // The layout and protocol used for YouTube ingest.
+  YouTubeIngestMode youtube_ingest_mode = 4;
+  // The folder where recordings are written. When absent, the runtime default
+  // output folder applies.
+  optional string output_folder_path = 5;
+  // Additional fields written with recordings, keyed by their field names.
+  map<string, string> recording_custom_fields = 6;
+}
+
+// The layout and protocol used for YouTube ingest.
+enum YouTubeIngestMode {
+  // No YouTube ingest mode is specified. The runtime uses Landscape RTMPS.
+  YOUTUBE_INGEST_MODE_UNSPECIFIED = 0;
+  // Sends the Landscape output using RTMPS ingest.
+  YOUTUBE_INGEST_MODE_LANDSCAPE_RTMPS = 1;
+  // Sends the Portrait output using RTMPS ingest.
+  YOUTUBE_INGEST_MODE_PORTRAIT_RTMPS = 2;
+  // Sends Landscape and Portrait as separate RTMPS streams.
+  YOUTUBE_INGEST_MODE_DUAL_RTMPS = 3;
+  // Sends the Landscape output using HLS ingest.
+  YOUTUBE_INGEST_MODE_LANDSCAPE_HLS = 4;
+  // Sends the Portrait output using HLS ingest.
+  YOUTUBE_INGEST_MODE_PORTRAIT_HLS = 5;
+  // Sends the Landscape output using DASH ingest.
+  YOUTUBE_INGEST_MODE_LANDSCAPE_DASH = 6;
+  // Sends the Portrait output using DASH ingest.
+  YOUTUBE_INGEST_MODE_PORTRAIT_DASH = 7;
+}

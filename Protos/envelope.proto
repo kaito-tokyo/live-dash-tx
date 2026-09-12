@@ -1,0 +1,35 @@
+// SPDX-FileCopyrightText: 2026 Kaito Udagawa <umireon@kaito.tokyo>
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// Persistence envelopes for Workspace definitions and preferences.
+syntax = "proto3";
+
+package ldtx.envelope;
+
+import "workspace_v4_definition.proto";
+import "workspace_v4_preferences.proto";
+
+// The persistence envelope for a WorkspaceDefinition. Contains an external_id
+// and a concrete WorkspaceDefinition.
+message WorkspaceDefinitionEnvelope {
+  // The UUIDv7 identifier for this persisted document.
+  string external_id = 1;
+
+  oneof definition {
+    // The Version 4 WorkspaceDefinition.
+    ldtx.workspace.v4.WorkspaceDefinitionV4 workspace_definition_v4 = 2;
+  }
+}
+
+// The persistence envelope for WorkspacePreferences. Contains an external_id
+// and a concrete WorkspacePreferences.
+message WorkspacePreferencesEnvelope {
+  // The UUIDv7 identifier for this persisted document.
+  string external_id = 1;
+
+  oneof preferences {
+    // The Version 4 WorkspacePreferences.
+    ldtx.workspace.v4.WorkspacePreferencesV4 workspace_preferences_v4 = 2;
+  }
+}
